@@ -5,3 +5,31 @@ integrations = ["javascript_database:1.0.0"]
 
 [nix]
 channel = "stable-25_05"
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Next.js Development Server"
+
+[[workflows.workflow]]
+name = "Next.js Development Server"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "export JWT_SECRET=\"ly-inspire-super-secret-jwt-key-for-replit-development\" && export ADMIN_EMAIL=\"admin@lyinspire.com\" && export ADMIN_PASSWORD=\"admin123\" && export NEXT_PUBLIC_APP_URL=\"https://$REPL_SLUG--$REPL_OWNER.replit.app\" && npm run dev -- --port 5000 --hostname 0.0.0.0"
+waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
+[[ports]]
+localPort = 5000
+externalPort = 80
