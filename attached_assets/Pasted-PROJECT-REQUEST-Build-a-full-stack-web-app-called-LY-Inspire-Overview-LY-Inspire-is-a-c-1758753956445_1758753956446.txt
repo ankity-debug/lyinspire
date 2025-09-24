@@ -1,0 +1,135 @@
+PROJECT REQUEST: Build a full-stack web app called "LY Inspire"
+
+Overview
+--------
+LY Inspire is a clean, minimal, white-label design inspiration platform for the Lemon Yellow design community. It automatically curates the top design inspirations daily from Behance, Dribbble, Medium (Design), and awards platforms (Core77, Awwwards). It displays a daily "Today's Award Pick" and a curated list of the "Top 10 Inspirations." The platform supports archive, filters, admin overrides, and a light/dark mode toggle.
+
+Tech Requirements
+-----------------
+- Frontend: Next.js 14 (app dir) + TypeScript + TailwindCSS + shadcn/ui for components
+- Backend: Node.js API routes (Next.js server) or Express, Prisma ORM, PostgreSQL database
+- Scrapers: Python (Playwright + Requests + BeautifulSoup), cron scheduled daily at 03:00 IST
+- Deployment: Vercel for frontend, Railway for backend + Postgres
+- Codebase must be fully exportable and editable outside Bolt
+
+UI / UX
+-------
+- Design language: clean, minimal, inspired by Lemon Yellow’s branding
+- Use shadcn/ui components for all UI elements
+- Support theme toggle (light mode default, dark mode alternative)
+- Pages:
+  1. `/` Homepage:
+     - Hero: "Today's Award Pick" (full-width card with image, title, source link)
+     - Section: "Top 10 Inspirations" (grid, responsive 2x5 or 3x4)
+     - Filter bar: by Source (Behance, Dribbble, Medium, Core77, Awwwards), Topics/Tags, Date
+  2. `/archive` — infinite scroll or pagination, searchable by tag/source/date
+  3. `/inspiration/[id]` — detail modal/page with metadata + CTA to open in new tab
+  4. `/admin` — protected panel to override Award Pick, approve/reject submissions
+  5. `/submit` — simple form (URL + tags + note), stored in moderation queue
+- Accessibility: WCAG 2.1 AA compliance
+
+Data Model (Prisma)
+-------------------
+model Inspiration {
+  id             String   @id @default(cuid())
+  title          String
+  description    String?
+  thumbnailUrl   String?
+  contentUrl     String   // external link
+  platform       String   // Behance|Dribbble|Medium|Core77|Awwwards
+  authorName     String?
+  authorUrl      String?
+  tags           String[]
+  score          Float
+  publishedAt    DateTime
+  scrapedAt      DateTime @default(now())
+  curatedBy      String?
+  archived       Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  sourceMeta     Json?
+}
+
+Backend APIs
+------------
+- `GET /api/today` → returns { awardPick, top10 }
+- `GET /api/inspirations?source=&tag=&page=&q=` → paginated results
+- `GET /api/inspirations/:id`
+- `POST /api/submissions` → add community submission
+- `POST /api/admin/award` → override Award Pick
+- `POST /api/admin/ingest` → trigger ingestion job
+
+Scraping & Curation
+-------------------
+- Implement Python scrapers for each source:
+  - Behance, Dribbble (Playwright required)
+  - Medium (RSS or HTML scrape)
+  - Core77 + Awwwards (HTML scrape)
+- Each scraper extracts: title, description, thumbnail, contentUrl, author, engagement metrics, publishedAt, tags
+- Save raw JSON to `/scraper/raw/`
+- Scoring algorithm:
+  - Engagement (likes/views) 45%
+  - Image quality 15%
+  - Recency 10%
+  - Tag/topic relevance 10%
+  - Editorial override boost 20%
+- Deduplicate by contentUrl
+- Select Top 10 with diversity constraints (no more than 4 per platform, max 2 per author)
+- Highest-scoring item = default Award Pick
+- Admin can override
+
+Cron Job
+--------
+- Run scrapers daily at 03:00 IST
+- GitHub Actions scheduled workflow (`30 21 * * *` UTC = 03:00 IST)
+- Update DB with new inspirations
+- Update homepage automatically
+
+Admin Panel
+-----------
+- Protected by simple email/password (from env vars)
+- Features:
+  - Override Award Pick
+  - Approve/reject submissions
+  - View/edit inspirations
+  - Re-run curation manually
+
+Deployment & Infra
+------------------
+- Frontend: deploy on Vercel
+- Backend + DB: deploy on Railway
+- GitHub Actions CI:
+  - lint (ESLint + Prettier)
+  - test (Jest + Playwright)
+  - build
+  - deploy
+  - cron scrape job
+- Provide Dockerfile + docker-compose for local dev
+- Secrets stored via .env file
+
+Extras (Phase 2 scaffolding)
+----------------------------
+- Email digest (SendGrid integration)
+- Community voting system for submissions
+- AI-based tag suggestion (optional, placeholder service)
+
+Deliverables
+------------
+- Fully working git repo
+- README.md with setup, env variables, deploy instructions
+- `.env.example` with placeholders
+- OpenAPI spec for backend APIs
+- Unit tests for scrapers and algorithm
+- End-to-end tests for homepage + admin override
+- Sample data seed script
+- Exportable full codebase (frontend, backend, scrapers, infra)
+
+Acceptance Criteria
+-------------------
+1. Homepage shows Award Pick + Top 10
+2. Daily scraper job populates DB
+3. Archive + filters functional
+4. Admin panel allows Award Pick override
+5. Code runs locally via docker-compose
+6. CI/CD workflows configured
+7. Code fully exportable from Bolt

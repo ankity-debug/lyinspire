@@ -1,0 +1,123 @@
+One-line summary — I recommend a hybrid workflow: keep using Replit for fast edits & live previews (what you’re good at), but run production hosting and reliable scheduled scrapers on dedicated infra (Vercel + Railway / GitHub Actions) so you get reliability, exportability and predictable scheduling. Use Cursor only as your deep-editing AI editor (optional) — it’s great for focused coding and AI-assisted debugging but doesn’t replace hosting. I’ll explain why, give you exact steps for both paths (fast path vs production path), and give runnable CI + deploy snippets you can copy-paste.
+
+Why this choice (short)
+	•	Replit = fastest browser-based edit → deploy cycle and has first-class GitHub + Deployments + scheduled jobs support, so it’s perfect for quick fixes and publishing.  ￼
+	•	But Replit has ephemeral filesystem quirks, potential scheduled-job flakiness for heavy production cron work, and cost tradeoffs when you scale — so put durable state (Postgres, S3) and heavy scrapers off-platform.  ￼
+	•	Cursor = excellent local/AI editor, strong GitHub integration and debugging tools (Bugbot), ideal if you want focused, high-velocity development and safer refactors — but it doesn’t host production sites.  ￼
+
+Quick pros/cons (practical)
+
+Replit
+	•	Pros: browser IDE, easy GitHub import/export, Deployments (static/dynamic), Scheduled Deployments & “Always On”. Fast for hotfixes and demos.  ￼
+	•	Cons: ephemeral filesystem (avoid storing raw scraped files locally), scheduled jobs sometimes reported unreliable at scale, paid features for always-on or heavy scheduled compute. Use external DB/storage.  ￼
+
+Cursor
+	•	Pros: focused AI code editor, deep GitHub workflows, excellent for rapid local dev, code review and AI-assisted bug detection (Bugbot). Great for heavy edits, refactors, or building the algorithm safely.  ￼
+	•	Cons: Not a hosting platform. You still push code to GitHub and host elsewhere (Vercel/Railway).  ￼
+
+Two recommended workflows (pick one)
+
+Option A — Fast iterative workflow (stay mostly inside Replit)
+
+When to use: you want to continue editing & publishing quickly in the browser; small user base; scrapers light/low volume.
+
+Steps (copy/paste):
+	1.	Import your GitHub repo into Replit (File → Import from GitHub). Confirm latest branch.  ￼
+	2.	In Replit: set Secrets (ENV) — DATABASE_URL, ADMIN_PASSWORD, SENDGRID_KEY, BEHANCE_KEY, DRIBBBLE_KEY, SCRAPER_PROXY etc. (Use Replit Secrets UI).  ￼
+	3.	Choose a Replit Deployment:
+	•	For web server: use Autoscale or Reserved VM if you want Always-on behavior. For scheduled scrapers, configure Scheduled Deployments to run your python scraper/runner.py at 03:00 IST. Replit supports Scheduled Deployments and “Always On”.  ￼
+	4.	IMPORTANT: don’t persist raw JSON or files to local disk on Replit — use an external store:
+	•	Postgres on Railway/Supabase for DB
+	•	S3 / DigitalOcean Spaces for raw JSON / thumbnails, or store raw JSON in DB as JSONB (recommended)
+Replit’s filesystem changes may not persist reliably.  ￼
+	5.	Configure scheduled job exactly: use Replit’s Scheduled Deployments UI OR run GitHub Actions cron if you prefer. Note: some users report occasional cron inconsistency — have alerts & retries.  ￼
+	6.	For production domain: use Replit Deployments → custom domain (paid). For cost savings / scale, consider moving to Vercel later.  ￼
+
+When to move off Replit: you’ll want to migrate when scrapers get heavy, you need guaranteed cron reliability, or the Replit hosting cost for production is too high.
+
+Option B — Hybrid production workflow (my recommended path for reliability & scale)
+
+When to use: you want robust production, predictable cron, and ownership of infra — still keep Replit or Cursor for dev.
+
+High-level:
+	•	Dev & quick edits: Replit (or Cursor for local AI editing). Push commits to GitHub.
+	•	Frontend deploy: Vercel (optimal for Next.js SSR/ISR)
+	•	Backend & scrapers: Railway / Render / Cloud Run or GitHub Actions scheduled runners (for simple scrapers)
+	•	Database: Postgres (Railway or Supabase)
+	•	Object storage: S3 or DigitalOcean Spaces for thumbnails/raw JSON
+
+Step-by-step (practical)
+	1.	Keep GitHub as the single source of truth (you already have it). Push every change from Replit to GitHub.  ￼
+	2.	Connect GitHub → Vercel for frontend. Configure env vars in Vercel dashboard. Vercel handles Next.js well (image optimization, SSR/ISR).
+	3.	Deploy backend (if separate) to Railway or Render; set DATABASE_URL, and point frontend’s API base to backend URL.
+	4.	Move scrapers off Replit: create a GitHub Actions workflow that runs your python scraper/runner.py on schedule (30 21 * * * UTC = 03:00 IST). This is cheap, reliable, versioned in GitHub and avoids Replit cron flakiness. (Example GitHub Actions snippet below). Alternatively, run scrapers on Railway scheduled jobs or Cloud Run.
+	5.	Configure logs & alerts (Sentry, Logflare, Datadog) for scraper failures and schedule misses.
+	6.	For quick edits still use Replit or Cursor — make edits → commit → GitHub → Vercel auto-deploy.
+
+Why this is better: you get the speed of Replit for dev, but production uses specialist hosts that scale, give consistent scheduled jobs, and are easier to debug in production.
+
+Useful, copy-paste artifacts
+
+GitHub Actions scheduled workflow (run scrapers daily at 03:00 IST — 30 21 * * * UTC)
+
+# .github/workflows/scrape.yml
+name: Daily Scrape
+on:
+  schedule:
+    - cron: '30 21 * * *'   # 21:30 UTC == 03:00 IST next day
+  workflow_dispatch:
+
+jobs:
+  run-scraper:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r scraper/requirements.txt
+
+      - name: Run scraper
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          API_INGEST_URL: ${{ secrets.API_INGEST_URL }}
+          SCRAPER_PROXY: ${{ secrets.SCRAPER_PROXY }}
+        run: |
+          python scraper/runner.py --env github-actions
+
+Use this if you move scrapers to GitHub Actions (cheap & reliable). Store API_INGEST_URL and DB secrets in GitHub Secrets.
+
+Quick Replit checklist (if you stay on Replit)
+	1.	Import repo to Replit.
+	2.	Add Secrets (ENV) in Replit → key/value.  ￼
+	3.	Configure Deployments → choose type (Autoscale / Reserved VM / Static) and link domain.  ￼
+	4.	For scheduled scrapers: configure Scheduled Deployments to run python scraper/runner.py at 03:00 IST (using Replit UI) — or rely on GitHub Actions.  ￼
+	5.	Ensure DB is external (Railway / Supabase) and not Replit filesystem.  ￼
+
+Cost & reliability notes (practical)
+	•	Replit Scheduled Deployments & Reserved VMs use paid compute units — inexpensive for small jobs, but add up for heavy scraping. Check Replit pricing for Scheduled Deployments.  ￼
+	•	Cursor has paid tiers; Bugbot and advanced features may cost extra if you rely on them for critical safety checks.  ￼
+
+Recommended immediate plan (what I’d do right now — actionable)
+	1.	Keep editing on Replit for the next 1–2 sprints (fast fixes), but push every commit to GitHub immediately. (You already pulled to Replit — good.)  ￼
+	2.	Create the GitHub Actions scrape.yml above and enable it NOW (cheap & reliable). Move scraper runs to GitHub Actions to avoid Replit cron unreliability.
+	3.	Connect the repository to Vercel for the Next.js frontend and to Railway/Supabase for Postgres. Set all env vars there. This gets you production stability and keeps Replit for editing.
+
+Risks / Assumptions
+	•	Assumption: your app is Next.js + Python scrapers (as you described). If scrapers are Node-based, convert the GitHub Actions steps accordingly.
+	•	Risk: Replit scheduled jobs can be flaky at scale — use GitHub Actions or Railway for critical cron reliability.  ￼
+	•	Risk: Replit filesystem is ephemeral — don’t rely on it for persistent storage. Use external Postgres/S3.  ￼
+
+Next Steps (3 concrete actions I’ll do if you want me to)
+	1.	I’ll create a ready-to-use scrape.yml GitHub Actions file (based on your repo layout) and a .github/workflows/deploy-preview.yml for staging — paste it into your repo or create a PR.
+	2.	I’ll produce a short Replit → Vercel migration checklist (commands + env var mapping + domain cutover steps) you can follow in 20 minutes.
+	3.	I’ll add a small monitoring + alert playbook (Sentry + simple uptime check + email alert) for scraper failures and schedule misses.
+
+If you want I’ll immediately produce the GitHub Actions scrape.yml tailored to your repo (I’ll assume scraper/runner.py exists and uses env DATABASE_URL and API_INGEST_URL). I’ll also draft the exact Replit env variable list and the recommended Vercel/Railway env mapping — say “Yes, generate the files” and I’ll produce them now.
