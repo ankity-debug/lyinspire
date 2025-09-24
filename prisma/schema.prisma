@@ -1,0 +1,76 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  role      String   @default("user") // "admin" | "user"
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  curatedInspirations Inspiration[] @relation("CuratedBy")
+  submissions         Submission[]
+
+  @@map("users")
+}
+
+model Inspiration {
+  id           String   @id @default(cuid())
+  title        String
+  description  String?
+  thumbnailUrl String?
+  contentUrl   String   @unique
+  platform     String   // Behance|Dribbble|Medium|Core77|Awwwards
+  authorName   String?
+  authorUrl    String?
+  tags         String[]
+  score        Float
+  publishedAt  DateTime
+  scrapedAt    DateTime @default(now())
+  curatedBy    String?
+  curator      User?    @relation("CuratedBy", fields: [curatedBy], references: [id])
+  archived     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  sourceMeta   Json?
+
+  @@map("inspirations")
+}
+
+model Submission {
+  id              String    @id @default(cuid())
+  title           String
+  description     String?
+  contentUrl      String
+  submitterName   String
+  submitterEmail  String
+  platform        String
+  tags            String[]
+  status          String    @default("pending") // pending|approved|rejected
+  submittedAt     DateTime  @default(now())
+  reviewedAt      DateTime?
+  reviewedBy      String?
+  reviewer        User?     @relation(fields: [reviewedBy], references: [id])
+  rejectionReason String?
+
+  @@map("submissions")
+}
+
+model DailyCuration {
+  id          String   @id @default(cuid())
+  date        DateTime @unique @db.Date
+  awardPickId String?
+  top10Ids    String[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("daily_curations")
+}

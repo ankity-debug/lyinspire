@@ -1,0 +1,50 @@
+name: Daily Scraper
+
+on:
+  schedule:
+    # Run at 3:00 AM IST (9:30 PM UTC previous day)
+    - cron: '30 21 * * *'
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install Python dependencies
+      run: |
+        cd scrapers
+        pip install -r requirements.txt
+        playwright install chromium
+    
+    - name: Run scrapers
+      env:
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        BEHANCE_API_KEY: ${{ secrets.BEHANCE_API_KEY }}
+        DRIBBBLE_ACCESS_TOKEN: ${{ secrets.DRIBBBLE_ACCESS_TOKEN }}
+      run: |
+        cd scrapers
+        python -c "
+        from behance_scraper import scrape_behance
+        from dribbble_scraper import scrape_dribbble
+        from medium_scraper import scrape_medium
+        from core77_scraper import scrape_core77
+        from awwwards_scraper import scrape_awwwards
+        from curation import curate_daily_content
+        from database import setup_database
+        
+        setup_database()
+        scrape_behance()
+        scrape_dribbble()
+        scrape_medium()
+        scrape_core77()
+        scrape_awwwards()
+        curate_daily_content()
+        "
