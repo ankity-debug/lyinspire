@@ -24,7 +24,8 @@ def setup_database():
             );
         """)
         
-        if cursor.fetchone()[0]:
+        result = cursor.fetchone()
+        if result and result[0]:
             logger.info("Database tables already exist")
         else:
             logger.warning("Database tables don't exist. Run Prisma migrations first.")
@@ -47,7 +48,8 @@ def save_inspiration(inspiration_data):
             (inspiration_data['contentUrl'],)
         )
         
-        if cursor.fetchone():
+        existing = cursor.fetchone()
+        if existing:
             logger.info(f"Inspiration already exists: {inspiration_data['title']}")
             cursor.close()
             conn.close()
@@ -58,9 +60,9 @@ def save_inspiration(inspiration_data):
             INSERT INTO inspirations (
                 id, title, description, "thumbnailUrl", "contentUrl", 
                 platform, "authorName", "authorUrl", tags, score, 
-                "publishedAt", "scrapedAt", "sourceMeta"
+                "publishedAt", "scrapedAt", "sourceMeta", "createdAt", "updatedAt"
             ) VALUES (
-                gen_random_uuid(), %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                gen_random_uuid(), %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
             ) RETURNING id
         """, (
             inspiration_data['title'],
@@ -74,10 +76,15 @@ def save_inspiration(inspiration_data):
             inspiration_data.get('score', 50),
             inspiration_data.get('publishedAt', datetime.now()),
             datetime.now(),
-            json.dumps(inspiration_data.get('sourceMeta', {}))
+            json.dumps(inspiration_data.get('sourceMeta', {})),
+            datetime.now(),
+            datetime.now()
         ))
         
-        inspiration_id = cursor.fetchone()[0]
+        result = cursor.fetchone()
+        if not result:
+            raise Exception("Failed to insert inspiration - no ID returned")
+        inspiration_id = result[0]
         conn.commit()
         cursor.close()
         conn.close()

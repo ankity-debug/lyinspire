@@ -1,6 +1,7 @@
 import requests
 import time
 import logging
+import os
 from datetime import datetime, timedelta
 from database import save_inspiration
 from scoring import calculate_score
@@ -36,7 +37,7 @@ def scrape_behance():
                     'authorName': project.get('owners', [{}])[0].get('display_name', ''),
                     'authorUrl': project.get('owners', [{}])[0].get('url', ''),
                     'tags': [field.get('name') for field in project.get('fields', [])],
-                    'publishedAt': datetime.fromtimestamp(project.get('published_on', 0)),
+                    'publishedAt': datetime.fromtimestamp(project.get('published_on', 0)) if project.get('published_on') else datetime.now(),
                     'sourceMeta': {
                         'likes': project.get('stats', {}).get('appreciations', 0),
                         'views': project.get('stats', {}).get('views', 0),

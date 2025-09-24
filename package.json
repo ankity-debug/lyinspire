@@ -13,7 +13,14 @@
     "db:studio": "prisma studio",
     "test": "jest",
     "test:watch": "jest --watch",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "scraper:install": "cd scrapers && pip install -r requirements.txt && playwright install chromium",
+    "scraper:run": "cd scrapers && python run_scrapers.py",
+    "scraper:run-platform": "cd scrapers && python run_scrapers.py --platform",
+    "scraper:curate": "cd scrapers && python run_scrapers.py --curation-only",
+    "scraper:scheduler": "cd scrapers && python scheduler.py",
+    "scraper:test": "cd scrapers && python run_scrapers.py --platform medium",
+    "scraper:config": "cd scrapers && python config.py"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { AdminAuth } from '@/components/admin-auth';
-import { AdminDashboard } from '@/components/admin-dashboard';
+import { EnhancedAdminDashboard } from '@/components/enhanced-admin-dashboard';
 import { useAuth } from '@/hooks/use-auth';
 
 export default function AdminPage() {
@@ -18,7 +18,7 @@ export default function AdminPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      {!isAuthenticated ? <AdminAuth /> : <AdminDashboard />}
+      {!isAuthenticated ? <AdminAuth /> : <EnhancedAdminDashboard />}
     </div>
   );
 }

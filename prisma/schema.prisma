@@ -9,10 +9,10 @@ datasource db {
 
 model User {
   id        String   @id @default(cuid())
-  email     String   @unique
-  password  String
-  role      String   @default("user") // "admin" | "user"
-  name      String?
+  email     String   @unique @db.VarChar(255)
+  password  String   @db.VarChar(255)
+  role      String   @default("user") @db.VarChar(20)
+  name      String?  @db.VarChar(255)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -20,19 +20,21 @@ model User {
   submissions         Submission[]
 
   @@map("users")
+  @@index([role])
+  @@index([createdAt])
 }
 
 model Inspiration {
   id           String   @id @default(cuid())
-  title        String
-  description  String?
-  thumbnailUrl String?
-  contentUrl   String   @unique
-  platform     String   // Behance|Dribbble|Medium|Core77|Awwwards
-  authorName   String?
-  authorUrl    String?
+  title        String   @db.VarChar(500)
+  description  String?  @db.Text
+  thumbnailUrl String?  @db.VarChar(1000)
+  contentUrl   String   @unique @db.VarChar(1000)
+  platform     String   @db.VarChar(50)
+  authorName   String?  @db.VarChar(255)
+  authorUrl    String?  @db.VarChar(1000)
   tags         String[]
-  score        Float
+  score        Float    @default(50)
   publishedAt  DateTime
   scrapedAt    DateTime @default(now())
   curatedBy    String?
@@ -43,25 +45,37 @@ model Inspiration {
   sourceMeta   Json?
 
   @@map("inspirations")
+  @@index([archived, score(sort: Desc)])
+  @@index([platform, archived, score(sort: Desc)])
+  @@index([publishedAt, archived, score(sort: Desc)])
+  @@index([createdAt])
+  @@index([scrapedAt])
+  @@index([curatedBy])
+  @@index([tags], type: Gin)
 }
 
 model Submission {
   id              String    @id @default(cuid())
-  title           String
-  description     String?
-  contentUrl      String
-  submitterName   String
-  submitterEmail  String
-  platform        String
+  title           String    @db.VarChar(500)
+  description     String?   @db.Text
+  contentUrl      String    @db.VarChar(1000)
+  submitterName   String    @db.VarChar(255)
+  submitterEmail  String    @db.VarChar(255)
+  platform        String    @db.VarChar(50)
   tags            String[]
-  status          String    @default("pending") // pending|approved|rejected
+  status          String    @default("pending") @db.VarChar(20)
   submittedAt     DateTime  @default(now())
   reviewedAt      DateTime?
   reviewedBy      String?
   reviewer        User?     @relation(fields: [reviewedBy], references: [id])
-  rejectionReason String?
+  rejectionReason String?   @db.Text
 
   @@map("submissions")
+  @@index([status, submittedAt(sort: Desc)])
+  @@index([submittedAt(sort: Desc)])
+  @@index([submitterEmail])
+  @@index([reviewedBy])
+  @@index([platform])
 }
 
 model DailyCuration {
@@ -73,4 +87,6 @@ model DailyCuration {
   updatedAt   DateTime @updatedAt
 
   @@map("daily_curations")
+  @@index([date(sort: Desc)])
+  @@index([awardPickId])
 }

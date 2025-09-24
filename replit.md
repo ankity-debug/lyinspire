@@ -60,8 +60,36 @@ LY Inspire is a comprehensive design inspiration platform that automatically cur
 - Maintains original JWT-based authentication system
 - Preserves existing UI component architecture
 
+## Automated Scheduling System
+
+### Production-Ready Daily Scraping
+- **GitHub Actions Workflow**: Automatically runs daily at 03:00 IST (9:30 PM UTC)
+- **Robust Error Handling**: Individual platform failures don't stop the entire process
+- **Retry Logic**: 3 retry attempts with 5-minute delays for failed operations
+- **Health Monitoring**: Database connectivity and platform availability checks
+- **Fallback Mechanism**: Backup job runs curation-only if main job fails
+
+### Platform Coverage
+- **Always Available**: Medium, Core77, Awwwards (no API keys required)
+- **Optional with API Keys**: Behance, Dribbble (gracefully skipped if keys missing)
+
+### Local Development Scripts
+- `npm run scraper:install` - Install Python dependencies and Playwright
+- `npm run scraper:run` - Run all available scrapers
+- `npm run scraper:test` - Test with Medium scraper only
+- `npm run scraper:curate` - Run curation algorithm only
+- `npm run scraper:config` - Check configuration status
+- `npm run scraper:scheduler` - Start local scheduler daemon
+
+### Configuration
+- Environment variables managed in `scrapers/.env.example`
+- Production configuration via GitHub Secrets
+- Comprehensive logging with rotation and monitoring
+- Health checks and performance tracking
+
 ## Status
 ✅ Successfully imported and configured for Replit environment
 ✅ Database setup and migrations completed
 ✅ Development server running on port 5000
 ✅ Deployment configuration ready
+✅ **Automated daily scheduling system implemented and tested**

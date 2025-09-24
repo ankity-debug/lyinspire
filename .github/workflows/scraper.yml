@@ -1,50 +1,163 @@
-name: Daily Scraper
+name: Daily Scraper & Curation
 
 on:
   schedule:
     # Run at 3:00 AM IST (9:30 PM UTC previous day)
     - cron: '30 21 * * *'
   workflow_dispatch: # Allow manual triggering
+    inputs:
+      platform:
+        description: 'Specific platform to scrape (optional)'
+        required: false
+        type: choice
+        options:
+          - 'all'
+          - 'behance'
+          - 'dribbble'
+          - 'medium'
+          - 'core77'
+          - 'awwwards'
+        default: 'all'
+      skip_curation:
+        description: 'Skip curation step'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   scrape:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     
     steps:
-    - uses: actions/checkout@v3
+    - name: Checkout repository
+      uses: actions/checkout@v4
     
     - name: Setup Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
+        cache: 'pip'
     
     - name: Install Python dependencies
       run: |
         cd scrapers
+        pip install --upgrade pip
         pip install -r requirements.txt
-        playwright install chromium
+        playwright install chromium --with-deps
     
-    - name: Run scrapers
+    - name: Validate environment
+      env:
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      run: |
+        cd scrapers
+        python -c "
+        import os
+        import sys
+        
+        # Check required environment variables
+        required_vars = ['DATABASE_URL']
+        missing_vars = [var for var in required_vars if not os.environ.get(var)]
+        
+        if missing_vars:
+            print(f'Missing required environment variables: {missing_vars}')
+            sys.exit(1)
+        
+        # Check optional environment variables
+        optional_vars = ['BEHANCE_API_KEY', 'DRIBBBLE_ACCESS_TOKEN']
+        missing_optional = [var for var in optional_vars if not os.environ.get(var)]
+        
+        if missing_optional:
+            print(f'Warning: Missing optional environment variables: {missing_optional}')
+            print('Some scrapers may be skipped')
+        
+        print('Environment validation completed')
+        "
+    
+    - name: Run scrapers and curation
       env:
         DATABASE_URL: ${{ secrets.DATABASE_URL }}
         BEHANCE_API_KEY: ${{ secrets.BEHANCE_API_KEY }}
         DRIBBBLE_ACCESS_TOKEN: ${{ secrets.DRIBBBLE_ACCESS_TOKEN }}
       run: |
         cd scrapers
-        python -c "
-        from behance_scraper import scrape_behance
-        from dribbble_scraper import scrape_dribbble
-        from medium_scraper import scrape_medium
-        from core77_scraper import scrape_core77
-        from awwwards_scraper import scrape_awwwards
-        from curation import curate_daily_content
-        from database import setup_database
         
-        setup_database()
-        scrape_behance()
-        scrape_dribbble()
-        scrape_medium()
-        scrape_core77()
-        scrape_awwwards()
-        curate_daily_content()
-        "
+        # Set script arguments based on workflow inputs
+        ARGS=""
+        if [[ "${{ github.event.inputs.platform }}" != "" && "${{ github.event.inputs.platform }}" != "all" ]]; then
+          ARGS="--platform ${{ github.event.inputs.platform }}"
+        fi
+        
+        if [[ "${{ github.event.inputs.skip_curation }}" == "true" ]]; then
+          ARGS="$ARGS --scrapers-only"
+        fi
+        
+        # Run the main scraper script with error handling
+        python run_scrapers.py $ARGS
+    
+    - name: Upload logs on failure
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: scraper-logs-${{ github.run_number }}
+        path: scrapers/scraper.log
+        retention-days: 7
+    
+    - name: Notify on failure
+      if: failure()
+      run: |
+        echo "❌ Daily scraping failed at $(date)"
+        echo "Check the logs artifact for details"
+        echo "Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+    
+    - name: Summary on success
+      if: success()
+      run: |
+        echo "✅ Daily scraping completed successfully at $(date)"
+        echo "Fresh content has been curated and is ready for display"
+        
+        # Print basic stats if log file exists
+        if [ -f scrapers/scraper.log ]; then
+          echo "=== Scraping Summary ==="
+          grep -E "(✓|✗|Successfully|Failed)" scrapers/scraper.log | tail -20 || true
+        fi
+
+  # Backup job that runs if main job fails (retry mechanism)
+  retry-on-failure:
+    runs-on: ubuntu-latest
+    needs: scrape
+    if: failure()
+    timeout-minutes: 30
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+    
+    - name: Install Python dependencies
+      run: |
+        cd scrapers
+        pip install --upgrade pip
+        pip install -r requirements.txt
+        playwright install chromium --with-deps
+    
+    - name: Retry scraping (curation only)
+      env:
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      run: |
+        cd scrapers
+        echo "🔄 Retrying with curation only (fallback mode)"
+        python run_scrapers.py --curation-only
+    
+    - name: Final notification
+      run: |
+        if [ $? -eq 0 ]; then
+          echo "✅ Retry successful - at least curation completed"
+        else
+          echo "❌ Retry failed - manual intervention required"
+        fi

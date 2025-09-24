@@ -10,13 +10,13 @@ logger = logging.getLogger(__name__)
 def scrape_core77():
     """Scrape design articles from Core77"""
     try:
-        url = "https://www.core77.com/posts"
+        url = "https://www.core77.com/"
         
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         }
         
-        response = requests.get(url, headers=headers)
+        response = requests.get(url, headers=headers, timeout=10)
         response.raise_for_status()
         
         soup = BeautifulSoup(response.content, 'html.parser')

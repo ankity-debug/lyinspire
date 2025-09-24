@@ -27,7 +27,7 @@ export function ArchiveFilters({ searchParams }: ArchiveFiltersProps) {
   const params = useSearchParams();
 
   const updateFilter = (key: string, value: string | null) => {
-    const newParams = new URLSearchParams(params);
+    const newParams = new URLSearchParams(params.toString());
     
     if (value) {
       newParams.set(key, value);
@@ -47,17 +47,17 @@ export function ArchiveFilters({ searchParams }: ArchiveFiltersProps) {
     searchParams.platform && { key: 'platform', value: searchParams.platform, label: searchParams.platform },
     searchParams.tags && { key: 'tags', value: searchParams.tags, label: searchParams.tags },
     searchParams.date && { key: 'date', value: searchParams.date, label: searchParams.date },
-  ].filter(Boolean);
+  ].filter((filter): filter is { key: string; value: string; label: string } => Boolean(filter));
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-4">
-        <Select value={searchParams.platform || ''} onValueChange={(value) => updateFilter('platform', value || null)}>
+        <Select value={searchParams.platform || 'all-platforms'} onValueChange={(value) => updateFilter('platform', value === 'all-platforms' ? null : value)}>
           <SelectTrigger className="w-40">
             <SelectValue placeholder="Platform" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Platforms</SelectItem>
+            <SelectItem value="all-platforms">All Platforms</SelectItem>
             {platforms.map((platform) => (
               <SelectItem key={platform} value={platform}>
                 {platform}
@@ -66,12 +66,12 @@ export function ArchiveFilters({ searchParams }: ArchiveFiltersProps) {
           </SelectContent>
         </Select>
 
-        <Select value={searchParams.date || ''} onValueChange={(value) => updateFilter('date', value || null)}>
+        <Select value={searchParams.date || 'all-time'} onValueChange={(value) => updateFilter('date', value === 'all-time' ? null : value)}>
           <SelectTrigger className="w-40">
             <SelectValue placeholder="Date" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Time</SelectItem>
+            <SelectItem value="all-time">All Time</SelectItem>
             <SelectItem value="today">Today</SelectItem>
             <SelectItem value="week">This Week</SelectItem>
             <SelectItem value="month">This Month</SelectItem>
@@ -107,13 +107,13 @@ export function ArchiveFilters({ searchParams }: ArchiveFiltersProps) {
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm text-muted-foreground">Active filters:</span>
           {activeFilters.map((filter) => (
-            <Badge key={filter!.key} variant="secondary" className="gap-1">
-              {filter!.label}
+            <Badge key={filter.key} variant="secondary" className="gap-1">
+              {filter.label}
               <Button
                 variant="ghost"
                 size="sm"
                 className="h-3 w-3 p-0 hover:bg-transparent"
-                onClick={() => updateFilter(filter!.key, null)}
+                onClick={() => updateFilter(filter.key, null)}
               >
                 <X className="h-2 w-2" />
               </Button>

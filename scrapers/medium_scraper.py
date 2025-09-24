@@ -13,7 +13,7 @@ def scrape_medium():
         # Medium's design tag RSS feed
         url = "https://medium.com/feed/tag/design"
         
-        response = requests.get(url)
+        response = requests.get(url, timeout=10)
         response.raise_for_status()
         
         soup = BeautifulSoup(response.content, 'xml')
@@ -27,7 +27,14 @@ def scrape_medium():
                 pub_date = item.find('pubDate').text if item.find('pubDate') else ''
                 
                 # Parse publication date
-                pub_datetime = datetime.strptime(pub_date, '%a, %d %b %Y %H:%M:%S %Z') if pub_date else datetime.now()
+                try:
+                    pub_datetime = datetime.strptime(pub_date, '%a, %d %b %Y %H:%M:%S %Z') if pub_date else datetime.now()
+                except ValueError:
+                    # Fallback for different date formats
+                    try:
+                        pub_datetime = datetime.strptime(pub_date, '%a, %d %b %Y %H:%M:%S GMT') if pub_date else datetime.now()
+                    except ValueError:
+                        pub_datetime = datetime.now()
                 
                 # Extract author from description or use default
                 author = "Medium Author"  # Could be extracted from description HTML

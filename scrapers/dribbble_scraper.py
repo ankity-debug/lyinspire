@@ -1,6 +1,7 @@
 import requests
 import time
 import logging
+import os
 from datetime import datetime
 from database import save_inspiration
 from scoring import calculate_score
@@ -33,7 +34,7 @@ def scrape_dribbble():
                     'authorName': shot.get('user', {}).get('name', ''),
                     'authorUrl': shot.get('user', {}).get('html_url', ''),
                     'tags': shot.get('tags', []),
-                    'publishedAt': datetime.fromisoformat(shot.get('published_at', '').replace('Z', '+00:00')),
+                    'publishedAt': datetime.fromisoformat(shot.get('published_at', '').replace('Z', '+00:00')) if shot.get('published_at') else datetime.now(),
                     'sourceMeta': {
                         'likes': shot.get('likes_count', 0),
                         'views': shot.get('views_count', 0),

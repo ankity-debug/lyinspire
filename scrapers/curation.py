@@ -46,14 +46,14 @@ def curate_daily_content():
         
         # Save or update daily curation
         cursor.execute("""
-            INSERT INTO daily_curations (date, "awardPickId", "top10Ids")
-            VALUES (%s, %s, %s)
+            INSERT INTO daily_curations (id, date, "awardPickId", "top10Ids", "createdAt", "updatedAt")
+            VALUES (gen_random_uuid(), %s, %s, %s, %s, %s)
             ON CONFLICT (date) 
             DO UPDATE SET 
                 "awardPickId" = EXCLUDED."awardPickId",
                 "top10Ids" = EXCLUDED."top10Ids",
                 "updatedAt" = CURRENT_TIMESTAMP
-        """, (today, award_pick_id, top_10_ids))
+        """, (today, award_pick_id, top_10_ids, datetime.now(), datetime.now()))
         
         conn.commit()
         cursor.close()
