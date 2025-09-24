@@ -1,252 +1,196 @@
-# LY Inspire - Design Inspiration Platform
+# LY Inspire — Design Inspiration Platform
 
-A comprehensive, production-ready design inspiration platform that automatically curates top design content from multiple sources (Behance, Dribbble, Medium Design, Core77, Awwwards) and presents it in a clean, minimal interface.
+LY Inspire is a Next.js application that curates and showcases design inspirations from multiple sources (Behance, Dribbble, Medium, Core77, Awwwards). It includes a public site, searchable archive, community submissions, an admin dashboard, and Python scrapers with a daily scheduler.
 
-## 🚀 Features
+## Highlights
 
-- **Daily Curation**: Automatically scrapes and curates content daily at 03:00 IST
-- **Content Display**: Shows "Today's Award Pick" and "Top 10 Inspirations" on homepage
-- **Archive System**: Searchable archive with filters (source, tags, date)
-- **Admin Override**: Protected admin panel for manual curation control
-- **Community Submissions**: User submission form with moderation queue
-- **Responsive Design**: Works perfectly on mobile and desktop
-- **Dark/Light Mode**: Theme switching with system preference detection
+- Daily curation with “Award Pick” and Top 10
+- Searchable archive with filters (search, platform, tags, date)
+- Admin dashboard (stats, moderation, award pick override, tools)
+- Community submissions with approval flow
+- Dark/light theme and responsive UI
+- Python scrapers + scheduler (03:00 IST) and GitHub Actions workflows
 
-## 🛠️ Tech Stack
+## Tech Stack
 
-- **Frontend**: Next.js 14 (App Router), TypeScript, TailwindCSS, shadcn/ui
-- **Backend**: Next.js API routes, Prisma ORM, PostgreSQL
-- **Authentication**: JWT-based auth with bcrypt password hashing
-- **Scrapers**: Python with Requests, BeautifulSoup, Playwright
-- **Deployment**: Vercel (frontend), Railway/Supabase (database)
-- **CI/CD**: GitHub Actions with automated testing and deployment
+- Web: Next.js (App Router 13.5), TypeScript, TailwindCSS, shadcn/ui, next-themes
+- API: Next.js route handlers
+- Data: Prisma ORM + PostgreSQL
+- Auth: JWT (jsonwebtoken) + bcryptjs, role-based (admin/user)
+- Validation: zod
+- UI Icons/UX: lucide-react
+- Scrapers: Python (requests, BeautifulSoup, Playwright)
+- CI/CD: GitHub Actions (CI pipeline + scheduled scraper) and optional Vercel deploy
 
-## 📦 Quick Start
+## Local Setup
 
-### Prerequisites
-
+Prerequisites
 - Node.js 18+ and npm
-- PostgreSQL database
-- Docker (optional, for local development)
+- PostgreSQL 15+ (local or Docker)
+- Python 3.11+ (only if running scrapers locally)
 
-### Local Development
+Steps
+1) Install dependencies
+   - `npm install`
+2) Configure environment
+   - `cp .env.example .env`
+   - Edit `.env` with database URL, JWT secret, and optional scraper tokens
+3) Database migrate and seed
+   - `npm run db:migrate`
+   - `npm run db:seed`
+     - Seeds an admin user using `ADMIN_EMAIL`/`ADMIN_PASSWORD` and sample inspirations (see `lib/seed.ts`).
+4) Start the dev server
+   - `npm run dev`
+   - App runs at `http://localhost:3000`
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd ly-inspire
-   ```
+Docker (recommended, one command)
+- `docker-compose up`
+  - Starts: Postgres, Next.js dev server, and the Python scraper scheduler container.
 
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
+## Environment Variables
 
-3. **Setup environment variables**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your database URL and other settings
-   ```
+See `.env.example` for the full list. Key variables:
+- `DATABASE_URL` — Postgres connection string
+- `JWT_SECRET` — JWT signing key
+- `ADMIN_EMAIL`, `ADMIN_PASSWORD` — Admin created during seeding
+- `BEHANCE_API_KEY`, `DRIBBBLE_ACCESS_TOKEN` — Optional, used by scrapers
+- `NEXT_PUBLIC_APP_URL` — Public base URL
 
-4. **Setup database**
-   ```bash
-   npx prisma generate
-   npx prisma migrate dev
-   npm run db:seed
-   ```
+## Scripts
 
-5. **Start development server**
-   ```bash
-   npm run dev
-   ```
+- `npm run dev` — Run Next.js dev server
+- `npm run build` — Build production bundle
+- `npm start` — Start production server
+- `npm run lint` — ESLint
+- `npm run type-check` — TypeScript type check
+- `npm run db:generate` — Generate Prisma client
+- `npm run db:migrate` — Run Prisma migrations (dev)
+- `npm run db:seed` — Seed DB via `lib/seed.ts`
+- `npm run db:studio` — Open Prisma Studio
 
-Visit `http://localhost:3000` to see the application.
-
-### Docker Development
-
-```bash
-docker-compose up
-```
-
-This starts the full stack including PostgreSQL database and the web application.
-
-## 🏗️ Project Structure
+## Project Structure
 
 ```
-├── app/                    # Next.js app directory
-│   ├── api/               # API routes
-│   ├── admin/             # Admin pages
-│   ├── archive/           # Archive page
-│   ├── inspiration/       # Individual inspiration pages
-│   └── submit/           # Submission form
-├── components/            # React components
-├── lib/                  # Utility functions
-├── prisma/               # Database schema and migrations
-├── scrapers/             # Python scraping scripts
-├── types/                # TypeScript type definitions
-└── hooks/                # Custom React hooks
+app/                  # Routes (App Router)
+  api/                # API route handlers (REST-style)
+  admin/              # Admin dashboard (client components)
+  archive/            # Archive listing + filters
+  inspiration/[id]/   # Inspiration detail + related
+  submit/             # Community submission form
+components/           # UI + feature components (shadcn/ui-based)
+hooks/                # Custom hooks (e.g., use-auth)
+lib/                  # Auth, Prisma, seeds, utils, mock-data
+prisma/               # Prisma schema and migrations
+scrapers/             # Python scrapers, scoring, scheduler
+types/                # Shared TypeScript types
 ```
 
-## 🎨 Key Components
+## Data Model (Prisma)
 
-### Homepage
-- Hero section with platform introduction
-- Today's Award Pick featured prominently
-- Top 10 Inspirations grid with rankings
+Tables
+- `users` — id, email (unique), password (bcrypt), role, name
+- `inspirations` — curated design items with `score`, `tags[]`, `platform`
+- `submissions` — community submissions (pending/approved/rejected)
+- `daily_curations` — per-day curated `awardPickId` and `top10Ids[]`
 
-### Archive System
-- Advanced filtering by platform, tags, and date
-- Search functionality across titles and descriptions
-- Infinite scroll pagination
-- Responsive grid layout
+See `prisma/schema.prisma` for full details.
 
-### Admin Panel
-- Dashboard with key metrics
-- Submission review and approval workflow
-- Manual Award Pick override
-- Content management tools
+## API Overview
 
-### Scraping System
-- Multi-platform scraping (Behance, Dribbble, etc.)
-- Intelligent scoring algorithm
-- Deduplication and quality filtering
-- Automated daily scheduling
+Public
+- `GET /api/today` — Returns `{ awardPick, top10 }` for the day; lazily creates a `daily_curations` entry if missing.
+- `GET /api/inspirations` — List inspirations with filters and pagination.
+  - Query params: `search`, `platform`, `tags` (comma-separated), `date` (`today|week|month|year`), `page`, `limit`.
+- `GET /api/inspirations/[id]` — Single inspiration details.
+- `GET /api/inspirations/[id]/related` — Related by platform/tags.
+- `POST /api/submissions` — Create a submission. Body schema (zod):
+  - `{ title, description?, contentUrl, submitterName, submitterEmail, platform, tags[] }`
 
-## 🔒 Authentication
+Auth
+- `POST /api/auth/login` — Body `{ email, password }` → `{ token, user }`
+- `GET /api/auth/me` — Requires `Authorization: Bearer <token>`
 
-The platform uses JWT-based authentication with:
-- Secure password hashing with bcrypt
-- Role-based access control (admin/user)
-- Protected API routes
-- Session management
+Admin (Bearer token + `role=admin`)
+- `GET /api/admin/stats` — Dashboard metrics (partially mocked)
+- `GET /api/admin/submissions` — Pending submissions
+- `PATCH /api/admin/submissions/[id]` — `{ status, rejectionReason? }`; creates an `inspiration` on approval
+- `GET /api/admin/inspirations` — Recent inspirations
+- `POST /api/admin/award` — `{ inspirationId }` sets today’s Award Pick
+- `POST /api/admin/ingest` — Stub to trigger scraping job (logs only)
 
-Default admin credentials (change in production):
-- Email: `admin@lyinspire.com`
-- Password: `admin123`
+Auth Notes
+- JWTs are generated server-side and stored in `localStorage` by the client (see `hooks/use-auth.ts`).
+- Protect admin-only endpoints using Bearer token; the admin UI handles login/logout.
 
-## 📊 Scoring Algorithm
+## UI Notes
 
-Content is scored using a weighted formula:
-- **Engagement metrics (45%)**: Likes, views, comments
-- **Image quality (15%)**: Thumbnail presence and quality
-- **Recency (10%)**: How recently published
-- **Tag relevance (10%)**: Design-related tag matching
-- **Editorial override (20%)**: Manual admin adjustments
+- Routes: `/` (home), `/archive`, `/submit`, `/inspiration/[id]`, `/admin`.
+- The archive grid fetches from `/api/inspirations` with filters.
+- The admin dashboard shows stats, moderates submissions, sets Award Pick, and can trigger a manual scrape (stubbed endpoint).
+- Homepage components (`AwardPick`, `TopInspirations`) currently use `lib/mock-data.ts` for demo data. The backend implements `/api/today`; swap to the API when real data is available.
 
-## 🚀 Deployment
+## Scrapers and Curation
 
-### Vercel Deployment
+Location: `scrapers/`
+- Sources: Behance, Dribbble, Medium, Core77, Awwwards
+- Key files: `*_scraper.py`, `scoring.py`, `curation.py`, `scheduler.py`, `database.py`
+- Scheduler: `scheduler.py` runs daily at 03:00 IST (see GitHub Action and Docker service)
 
-1. **Connect to Vercel**
-   ```bash
-   npm install -g vercel
-   vercel login
-   vercel
-   ```
-
-2. **Set environment variables** in Vercel dashboard
-3. **Configure build settings** (already configured in `vercel.json`)
-
-### Database Setup
-
-Use Railway, Supabase, or any PostgreSQL provider:
-
-1. Create database instance
-2. Run migrations: `npx prisma migrate deploy`
-3. Seed data: `npm run db:seed`
-
-## 🤖 CI/CD Pipeline
-
-The project includes comprehensive GitHub Actions workflows:
-
-- **CI Pipeline**: Linting, type checking, testing, building
-- **Deployment**: Automatic deployment on main branch
-- **Daily Scraper**: Scheduled scraping at 3:00 AM IST
-
-Required GitHub Secrets:
-- `VERCEL_TOKEN`
-- `VERCEL_ORG_ID`
-- `VERCEL_PROJECT_ID`
-- `DATABASE_URL`
-- `BEHANCE_API_KEY`
-- `DRIBBBLE_ACCESS_TOKEN`
-
-## 📝 API Documentation
-
-### Public Endpoints
-
-- `GET /api/today` - Get today's award pick and top 10
-- `GET /api/inspirations` - Get paginated inspirations with filters
-- `GET /api/inspirations/:id` - Get single inspiration details
-- `POST /api/submissions` - Submit new inspiration
-
-### Admin Endpoints (Requires authentication)
-
-- `GET /api/admin/stats` - Get dashboard statistics
-- `GET /api/admin/submissions` - Get pending submissions
-- `PATCH /api/admin/submissions/:id` - Review submission
-- `POST /api/admin/award` - Set award pick
-- `POST /api/admin/ingest` - Trigger manual scraping
-
-## 🧪 Testing
-
-```bash
-# Run all tests
-npm test
-
-# Run tests in watch mode
-npm run test:watch
-
-# Run type checking
-npm run type-check
-
-# Run linting
-npm run lint
+Run locally (optional)
+```
+cd scrapers
+python -m venv .venv && source .venv/bin/activate  # or your preferred env
+pip install -r requirements.txt
+python scheduler.py
 ```
 
-## 🔧 Configuration
+Dockerized scraper
+- Included as `scraper` service in `docker-compose.yml` (runs continuously with the scheduler)
 
-### Environment Variables
+CI workflow scraper
+- `.github/workflows/scraper.yml` runs the scrapers on a schedule and can be dispatched manually. Set `DATABASE_URL`, `BEHANCE_API_KEY`, `DRIBBBLE_ACCESS_TOKEN` as GitHub secrets.
 
-```env
-# Database
-DATABASE_URL="postgresql://username:password@localhost:5432/ly_inspire"
+Scoring
+- See `scrapers/scoring.py` for the scoring breakdown used during ingestion.
 
-# Authentication
-JWT_SECRET="your-super-secret-jwt-key"
+## CI/CD
 
-# Admin User
-ADMIN_EMAIL="admin@lyinspire.com"
-ADMIN_PASSWORD="admin123"
+GitHub Actions
+- `.github/workflows/ci.yml` — Lint, type-check, migrate, build, and test on PRs and pushes. Deploy step uses `amondnet/vercel-action` when pushing to `main`.
+- Required secrets for deploy: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`.
 
-# API Keys
-BEHANCE_API_KEY="your-behance-api-key"
-DRIBBBLE_ACCESS_TOKEN="your-dribbble-access-token"
+Vercel (optional)
+- Create a Vercel project, connect the repo, and configure env vars (`DATABASE_URL`, `JWT_SECRET`, etc.).
+- This repo does not include a `vercel.json`; default settings are sufficient for Next.js.
 
-# App Settings
-NEXT_PUBLIC_APP_URL="http://localhost:3000"
-```
+## Deployment (Docker)
 
-### Scraper Configuration
+Production image
+- `Dockerfile` builds a production image for the Next.js app
 
-The scrapers run daily at 3:00 AM IST and can be configured in `scrapers/scheduler.py`. Each platform scraper can be enabled/disabled and has configurable limits.
+Compose (dev)
+- `docker-compose.yml` spins up Postgres, app (dev), and scraper
 
-## 🤝 Contributing
+## Development Tips
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Run the test suite
-6. Submit a pull request
+- Prisma Studio: `npm run db:studio`
+- Images: Next Image is set `unoptimized: true` and allows Pexels/Dribbble/Behance domains (see `next.config.js`).
+- Tailwind/shadcn: UI components live under `components/ui` and follow shadcn patterns.
 
-## 📄 License
+## Testing
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+- Jest is configured; add tests under a `__tests__/` folder and run:
+  - `npm test` or `npm run test:watch`
 
-## 🆘 Support
+## Security & Config
 
-For support, please create an issue in the GitHub repository or contact the development team.
+- Change all defaults in `.env` for production (especially `JWT_SECRET`).
+- Restrict admin credentials and rotate tokens/keys regularly.
+
+## License
+
+- No LICENSE file found. Add one (e.g., MIT) to clarify usage.
+
 
 ---
 
